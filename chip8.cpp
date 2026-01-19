@@ -265,6 +265,16 @@ case 0x8000:
         break;
 
     }
+
+}
+
+/* CXNN (0xC000) - Set VX = random byte AND NN */
+case 0xC000:
+{
+    uint8_t x = (opcode & 0x0F00) >> 8;  
+    uint8_t nn = opcode & 0x00FF;        
+    V[x] = (rand() % 256) & nn;          
+    break;
 }
 
 /* ANNN — Set I */
@@ -274,11 +284,6 @@ case 0xA000:
     break;
 }
 
-/* =========================================================
-   PROGRAM FLOW (CONDITIONAL SKIPS)
-   ========================================================= */
-
-/* (none implemented) */
 
 
 /* =========================================================
@@ -326,6 +331,88 @@ case 0xD000:
     drawFlag = true;
     break;
 }
+
+/* =========================================================
+   TIMER & MEMORY STUFF
+   ========================================================= */
+
+
+case 0xF000: {
+    uint8_t x = (opcode & 0X0F00) >> 8;
+    uint8_t y = (opcode & 0X00F0) >> 4;
+
+    switch (opcode & 0x00FF) {
+       
+    /* FX07 - Set VX = delay timer value */
+    case(0x07):
+    {
+        V[x] = delayTimer;
+        break;
+    }
+    /* FX0A - Wait for key press, store in VX */
+    case 0x0A: {
+        bool keyPressed = false;
+        for (int i = 0; i < 16; i++) {
+            if (keys[i]) {
+                V[x] = i;
+                keyPressed = true;
+                break;
+            }
+        }
+
+        
+        if (!keyPressed) {
+            pc -= 2;
+        }
+        break;
+    }
+    /* FX15 - Set delay timer = VX */
+    case(0x15): {
+        delayTimer = V[x];
+        break;
+    }
+    /* FX18 - Set sound timer = VX */
+    case(0x18): {
+        soundTimer = V[x];
+        break;
+    }
+    /* FX1E - Add VX to I (set I = I + VX) */
+    case(0x1E): {
+        I += V[x];
+        break;
+    }
+    /* FX29 - Set I = location of sprite for digit VX */
+    case(0x29): {
+        I = V[x] * 5;
+        break;
+    }
+    /* FX33 - Store BCD representation of VX in memory[I], memory[I+1], memory[I+2] */
+    case(0x33): {
+        memory[I] = V[x] / 100;            // Hundreds digit
+        memory[I + 1] = (V[x] / 10) % 10;  // Tens digit
+        memory[I + 2] = V[x] % 10;         // Ones digit
+        break;
+    }
+    /* FX55 - Store V0 through VX in memory starting at I */
+    case(0x55): {
+        for (int i = 0; i <= x; ++i) {
+            memory[I + i] = V[i];
+        }
+        break;
+    }
+    /* FX65 - Load V0 through VX from memory starting at I */
+    case(0x65): {
+        for (int i = 0; i <= x; ++i) {
+            V[i] = memory[I + i];
+        }
+        break;
+    }
+    }
+
+}
+
+
+
 
 }
 
